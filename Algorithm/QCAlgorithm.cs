@@ -2299,6 +2299,10 @@ namespace QuantConnect.Algorithm
         /// <param name="leverage">The requested leverage for this equity. Default is set by <see cref="SecurityInitializer"/></param>
         /// <returns>The new <see cref="Crypto"/> security</returns>
         [DocumentationAttribute(AddingData)]
+        public Crypto AddCrypto(string ticker,Type tpe,  Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
+        {
+            return AddSecurity<Crypto>(SecurityType.Crypto, ticker, resolution, market, fillForward, leverage, false, tpe: tpe);
+        }
         public Crypto AddCrypto(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
         {
             return AddSecurity<Crypto>(SecurityType.Crypto, ticker, resolution, market, fillForward, leverage, false);
@@ -2317,6 +2321,11 @@ namespace QuantConnect.Algorithm
         public CryptoFuture AddCryptoFuture(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
         {
             return AddSecurity<CryptoFuture>(SecurityType.CryptoFuture, ticker, resolution, market, fillForward, leverage, false);
+        }
+
+        public CryptoFuture AddCryptoFuture(string ticker,Type tpe, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
+        {
+            return AddSecurity<CryptoFuture>(SecurityType.CryptoFuture, ticker, resolution, market, fillForward, leverage, false, tpe:tpe);
         }
 
         /// <summary>
@@ -2766,7 +2775,7 @@ namespace QuantConnect.Algorithm
         /// </summary>
         [DocumentationAttribute(AddingData)]
         private T AddSecurity<T>(SecurityType securityType, string ticker, Resolution? resolution, string market, bool fillForward, decimal leverage, bool extendedMarketHours,
-            DataMappingMode? mappingMode = null, DataNormalizationMode? normalizationMode = null)
+            DataMappingMode? mappingMode = null, DataNormalizationMode? normalizationMode = null, Type? tpe = null)
             where T : Security
         {
             if (market == null)
@@ -2785,9 +2794,22 @@ namespace QuantConnect.Algorithm
                 symbol = QuantConnect.Symbol.Create(ticker, securityType, market);
             }
 
-            var configs = SubscriptionManager.SubscriptionDataConfigService.Add(symbol, resolution, fillForward, extendedMarketHours,
-                dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
-                dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode);
+            List<SubscriptionDataConfig> configs;
+            if (tpe == null)
+            {
+                configs = SubscriptionManager.SubscriptionDataConfigService.Add(symbol, resolution, fillForward,
+                    extendedMarketHours,
+                    dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
+                    dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode);
+            }
+            else
+            {
+                configs = new List<SubscriptionDataConfig>{SubscriptionManager.SubscriptionDataConfigService.Add(tpe,symbol, resolution, fillForward,
+                    extendedMarketHours,
+                    dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
+                    dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode)};
+            }
+
             var security = Securities.CreateSecurity(symbol, configs, leverage);
 
             return (T) AddToUserDefinedUniverse(security, configs);
