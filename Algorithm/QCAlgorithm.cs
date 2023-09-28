@@ -2302,10 +2302,12 @@ namespace QuantConnect.Algorithm
         /// <param name="leverage">The requested leverage for this equity. Default is set by <see cref="SecurityInitializer"/></param>
         /// <returns>The new <see cref="Crypto"/> security</returns>
         [DocumentationAttribute(AddingData)]
-        public Crypto AddCrypto(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
+        public Crypto AddCrypto(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage, Type? dataType = null)
         {
-            return AddSecurity<Crypto>(SecurityType.Crypto, ticker, resolution, market, fillForward, leverage, false);
+            return AddSecurity<Crypto>(SecurityType.Crypto, ticker, resolution, market, fillForward, leverage, false, dataType:dataType);
         }
+        
+
 
         /// <summary>
         /// Creates and adds a new <see cref="CryptoFuture"/> security to the algorithm
@@ -2317,9 +2319,9 @@ namespace QuantConnect.Algorithm
         /// <param name="leverage">The requested leverage for this equity. Default is set by <see cref="SecurityInitializer"/></param>
         /// <returns>The new <see cref="CryptoFuture"/> security</returns>
         [DocumentationAttribute(AddingData)]
-        public CryptoFuture AddCryptoFuture(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage)
+        public CryptoFuture AddCryptoFuture(string ticker, Resolution? resolution = null, string market = null, bool fillForward = true, decimal leverage = Security.NullLeverage, Type? dataType = null)
         {
-            return AddSecurity<CryptoFuture>(SecurityType.CryptoFuture, ticker, resolution, market, fillForward, leverage, false);
+            return AddSecurity<CryptoFuture>(SecurityType.CryptoFuture, ticker, resolution, market, fillForward, leverage, false, dataType: dataType);
         }
 
         /// <summary>
@@ -2522,7 +2524,7 @@ namespace QuantConnect.Algorithm
         {
             return AddData(typeof(T), underlying, resolution, timeZone, fillForward, leverage);
         }
-
+        
         /// <summary>
         /// AddData<typeparam name="T"/> a new user defined data source including symbol properties and exchange hours,
         /// all other vars are not required and will use defaults.
@@ -2769,7 +2771,7 @@ namespace QuantConnect.Algorithm
         /// </summary>
         [DocumentationAttribute(AddingData)]
         private T AddSecurity<T>(SecurityType securityType, string ticker, Resolution? resolution, string market, bool fillForward, decimal leverage, bool extendedMarketHours,
-            DataMappingMode? mappingMode = null, DataNormalizationMode? normalizationMode = null)
+            DataMappingMode? mappingMode = null, DataNormalizationMode? normalizationMode = null, Type? dataType = null)
             where T : Security
         {
             if (market == null)
@@ -2787,10 +2789,22 @@ namespace QuantConnect.Algorithm
             {
                 symbol = QuantConnect.Symbol.Create(ticker, securityType, market);
             }
-
-            var configs = SubscriptionManager.SubscriptionDataConfigService.Add(symbol, resolution, fillForward, extendedMarketHours,
-                dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
-                dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode);
+            
+            List<SubscriptionDataConfig> configs;
+            if (dataType == null)
+            {
+                configs = SubscriptionManager.SubscriptionDataConfigService.Add(symbol, resolution, fillForward,
+                    extendedMarketHours,
+                    dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
+                    dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode);
+            }
+            else
+            {
+                configs = new List<SubscriptionDataConfig>{SubscriptionManager.SubscriptionDataConfigService.Add(dataType,symbol, resolution, fillForward,
+                    extendedMarketHours,
+                    dataNormalizationMode: normalizationMode ?? UniverseSettings.DataNormalizationMode,
+                    dataMappingMode: mappingMode ?? UniverseSettings.DataMappingMode)};
+            }
             var security = Securities.CreateSecurity(symbol, configs, leverage);
 
             return (T) AddToUserDefinedUniverse(security, configs);
